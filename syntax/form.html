@@ -1,0 +1,23 @@
+<form action="https://localhost:3000/process_create" method="POST">
+<p><input type="text" name="title"></p>
+<!-- url로 데이터를 전송할때는 url은 무한히 긴 데이터를 전송하지 않는다. 이유는 나중에 데이터가 잘릴 위험이 있기 때문이다.
+    따라서 서버로부터 사용자가 데이터를 가져올때(GET)는 method="GET"을 사용한다.
+-->
+<p>
+    <textarea name="description"></textarea>
+</p>
+<p>
+    <input type="submit">
+</p>
+</form>
+
+<!-- 
+    form이라는 태그는 폼안에 있는 각각의 컨트롤들을 사용자가 입력한 정보를 submit 버튼을 눌렀을때 action 속성이 가리키는 서버로 QueryString의 형태로 데이터를 전송하는 HTML의 기능이다.
+
+    서버에서 데이터를 가져올때(get)는 '?어쩌구저쩌구' 형식의 QueryString을 사용하고,
+    서버에 데이터를 생성,수정,삭제하는 것과 같은 수정하는 행위를 할때는 필요한 데이터를 절대로 URL에 보내면 안된다.
+
+    방법은 form에 method="POST"를 사용하면된다.
+
+    결론 : 서버에 데이터를 수정,삭제,생성 할때는 데이터를 반드시 method="POST" 방식으로 해야된다.
+-->
