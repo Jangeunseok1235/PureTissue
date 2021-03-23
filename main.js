@@ -1,35 +1,20 @@
+//refactoring : 코드를 간단하고 보기 좋게, 유지보수하기 쉽게...
+//------------------------------------------------------------------------------------------
+// 기초 선언
 var http = require('http');
 var fs = require('fs');
 var url = require('url');
 var qs = require('querystring');
+var path = require('path');
+var sanitizeHtml = require('sanitize-html');
 
-function templateHTML(title, list, body, control){
-    return `
-    <!doctype html>
-    <html>
-    <head>
-    <title>WEB1 - ${title}</title>
-    <meta charset="utf-8">
-    <body>
-    <h1><a href="/">WEB</a></h1>
-    ${list}
-    ${control}
-    ${body}
-    </body>
-    </html>
-  
-  `;
-}
-function templateList(filelist){
-    var list = '<ul>';
-    var i = 0;
-    while(i < filelist.length){
-      list = list + `<li><a href="/?id=${filelist[i]}">${filelist[i]}</a></li>`
-      i = i + 1;
-    }
-    list = list+'</ul>';
-    return list;
-}
+//-----------------------------------------------------------------------------------------
+//사용자가 입력한 정보, 외부에서 정보가 들어오고 나갈때 모두 오염될 수 있기에 철저히 의심해야한다.
+
+// 모듈
+var template = require('./lib/template.js');
+//------------------------------------------------------------------------------------------
+
 
     var app = http.createServer(function(request,response){
     var _url = request.url;
@@ -44,12 +29,12 @@ function templateList(filelist){
          fs.readdir('./data', function(error, filelist){
           var title = 'Welcome';
           var description = 'Hello, node.js';
-          var list = templateList(filelist); 
-          var template = templateHTML(title, list,`<h2>${title}</h2>${description}`, 
+          var list = template.LIST(filelist); 
+          var html = template.HTML(title, list,`<h2>${title}</h2>${description}`, 
             `<a href="/create">Create</a>`
           );
               response.writeHead(200);
-              response.end(template);
+              response.end(html);
           });
 
 //----------------------------------------------------------------------------------
@@ -57,20 +42,32 @@ function templateList(filelist){
 //----------------------------------------------------------------------------------
       else {
         fs.readdir('./data', function(error, filelist){
-        fs.readFile(`data/${queryData.id}`, 'utf8', function(err,description){
+          var filterdId = path.parse(queryData.id).base;
+        fs.readFile(`data/${filterdId}`, 'utf8', function(err,description){
           var title = queryData.id;
-          var list = templateList(filelist);
-          var template = templateHTML(title, list,`<h2>${title}</h2>${description}`,
+          var sanitizedTitle = sanitizeHtml(title);
+          var sanitizedDescription = sanitizeHtml(description, {
+            allowedTags:['h1']
+            //allowedTags 는 허용할 태그들을 설정하는 것... 자세한건 sanitized-html을 검색하여 명령어를 더 찾아보길 추천한다.
+            
+
+            // + 현재 모듈의 디폴트 옵션이 allowedTags에 h1 ~ h6이 전부 들어있기 때문에 태그가 먹힘. 나중에 제한하고 싶으면 수정하면 될 듯 함
+          });
+          
+            // 변수 이름은 최대한 관련 있는 것 끼리 묶고 변수 이름을 통해 코딩의 내용을 간략하게나마 파악하게끔 하는게 좋은듯
+          var list = template.LIST(filelist);
+          var html = template.HTML(sanitizedTitle, list,
+           `<h2>${sanitizedTitle}</h2>${sanitizedDescription}`,
            `<a href="/create">Create</a>
-            <a href="/update?id=${title}">update</a>
+            <a href="/update?id=${sanitizedTitle}">update</a>
             <form action="delete_process" method="post">
-              <input type="hidden" name="id" value="${title}">
+              <input type="hidden" name="id" value="${sanitizedTitle}">
               <input type="submit" value="delete">
             </form>
             ` 
           );
               response.writeHead(200);
-              response.end(template);
+              response.end(html);
         });
       }); 
       }
@@ -80,8 +77,8 @@ function templateList(filelist){
     else if (pathname === '/create') {
       fs.readdir('./data', function(error, filelist){
         var title = 'WEB - Create';
-        var list = templateList(filelist); 
-        var template = templateHTML(title, list,`
+        var list = template.LIST(filelist); 
+        var html = template.HTML(title, list,`
           <form action="/create_process" method="POST">
           <p><input type="text" name="title" placeholder="title"></p>
           <p>
@@ -93,7 +90,7 @@ function templateList(filelist){
           </form>
         `, '');
             response.writeHead(200);
-            response.end(template);
+            response.end(html);
         });
 
     }
@@ -117,10 +114,11 @@ function templateList(filelist){
     }
     else if(pathname === '/update'){
       fs.readdir('./data', function(error, filelist){
-        fs.readFile(`data/${queryData.id}`, 'utf8', function(err,description){
+        var filterdId = path.parse(queryData.id).base;
+        fs.readFile(`data/${filterdId}`, 'utf8', function(err,description){
           var title = queryData.id;
-          var list = templateList(filelist);
-          var template = templateHTML(title, list,
+          var list = template.LIST(filelist);
+          var html = template.HTML(title, list,
             `
             <form action="/update_process" method="POST">
             <input type="hidden" name="id" value=${title}>
@@ -137,7 +135,7 @@ function templateList(filelist){
            `<a href="/create">Create</a> <a href="/update?id=${title}">update</a>` 
           );
               response.writeHead(200);
-              response.end(template);
+              response.end(html);
         });
       }); 
     }
@@ -151,7 +149,8 @@ function templateList(filelist){
         var id = post.id
         var title = post.title;
         var description = post.description;
-        fs.rename(`data/${id}`, `data/${title}`, function(error){
+        var filterdId = path.parse(id).base;
+        fs.rename(`data/${filterdId}`, `data/${title}`, function(error){
           fs.writeFile(`data/${title}`, description, 'utf8', function(err){
             response.writeHead(302, {Location: `/?id=${title}`});
             response.end();

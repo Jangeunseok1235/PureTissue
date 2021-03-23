@@ -1,0 +1,4 @@
+<h1>test file</h1>
+<script>
+alert('Something to drink')
+</script>
